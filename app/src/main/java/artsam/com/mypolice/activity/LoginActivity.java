@@ -1,68 +1,62 @@
-package artsam.com.mypolice;
+package artsam.com.mypolice.activity;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.support.v7.app.AppCompatActivity;
-import android.app.LoaderManager.LoaderCallbacks;
 
-import android.content.CursorLoader;
-import android.content.Loader;
-import android.database.Cursor;
-import android.net.Uri;
 import android.os.AsyncTask;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.ContactsContract;
-import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.List;
+
+import artsam.com.mypolice.R;
+import artsam.com.mypolice.client.ClientsBuilder;
+import artsam.com.mypolice.client.MyPoliceClient;
+import artsam.com.mypolice.models.BidFromServer;
+import butterknife.Bind;
+import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 
 /**
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity {
+    private static final String TAG = "LoginActivity";
 
-    /**
-     * Id to identity READ_CONTACTS permission request.
-     */
-    private static final int REQUEST_READ_CONTACTS = 0;
+    @Bind(R.id.login_form)
+    View mLoginFormView;
+    @Bind(R.id.login_progress)
+    View mProgressView;
+    @Bind(R.id.login)
+    EditText mLoginView;
+    @Bind(R.id.password)
+    EditText mPasswordView;
+    @Bind(R.id.btnSignIn)
+    Button mSignInBtn;
 
-    /**
-     * A dummy authentication store containing known user names and passwords.
-     * TODO: remove after connecting to a real authentication system.
-     */
-    private static final String[] DUMMY_CREDENTIALS = new String[]{
-            "foo@example.com:hello", "bar@example.com:world"
-    };
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
 
-    // UI references.
-    private EditText mLoginView;
-    private EditText mPasswordView;
-    private View mLoginFormView;
-    private View mProgressView;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        ButterKnife.bind(this);
 
-        // Set up the login form.
-        mLoginView = (EditText) findViewById(R.id.login);
-        mPasswordView = (EditText) findViewById(R.id.password);
-
-        Button mSignInBtn = (Button) findViewById(R.id.btnSignIn);
         mSignInBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -70,70 +64,45 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
     }
 
-    /**
-     * Attempts to sign in or register the account specified by the login form.
-     * If there are form errors (invalid email, missing fields, etc.), the
-     * errors are presented and no actual login attempt is made.
-     */
     private void attemptLogin() {
-        if (mAuthTask != null) {
-            return;
-        }
-
-        // Reset errors.
-        mLoginView.setError(null);
-        mPasswordView.setError(null);
+        Log.d(TAG, "attemptLogin()");
 
         // Store values at the time of the login attempt.
         String login = mLoginView.getText().toString();
         String password = mPasswordView.getText().toString();
 
-        boolean cancel = false;
-        View focusView = null;
-
-        // Check for a valid login.
-        if (TextUtils.isEmpty(login)) {
-            mLoginView.setError(getString(R.string.error_field_required));
-            focusView = mLoginView;
-            cancel = true;
-        } else if (!isEmailValid(login)) {
-            mLoginView.setError(getString(R.string.error_invalid_login));
-            focusView = mLoginView;
-            cancel = true;
-        }
-
-        // Check for a valid password, if the user entered one.
-        if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
-            mPasswordView.setError(getString(R.string.error_incorrect_password));
-            focusView = mPasswordView;
-            cancel = true;
-        }
-
-        if (cancel) {
-            // There was an error; don't attempt login and focus the first
-            // form field with an error.
-            focusView.requestFocus();
-        } else {
+        if (mAuthTask == null && validate(login, password)) {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
             mAuthTask = new UserLoginTask(login, password);
             mAuthTask.execute((Void) null);
+        } else {
+            Toast.makeText(getBaseContext(), "Login failed", Toast.LENGTH_LONG).show();
         }
+
     }
 
-    private boolean isEmailValid(String email) {
-        //TODO: Replace this with your own logic
-        return email.contains("@");
-    }
+    private boolean validate(String login, String password) {
+        mLoginView.setError(null);
+        mPasswordView.setError(null);
 
-    private boolean isPasswordValid(String password) {
-        //TODO: Replace this with your own logic
-        return password.length() > 4;
+        // Check for a valid login.
+        if (login.isEmpty()) {
+            mLoginView.setError(getString(R.string.error_field_required));
+            mLoginView.requestFocus();
+            return false;
+        }
+
+        // Check for a valid password, if the user entered one.
+        if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
+            mPasswordView.setError(getString(R.string.error_incorrect_password));
+            mPasswordView.requestFocus();
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -178,36 +147,42 @@ public class LoginActivity extends AppCompatActivity {
      */
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final String mEmail;
+        private final String mLogin;
         private final String mPassword;
 
-        UserLoginTask(String email, String password) {
-            mEmail = email;
+        UserLoginTask(String login, String password) {
+            mLogin = login;
             mPassword = password;
         }
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
+            MyPoliceClient myPoliceClient = ClientsBuilder.getMyPoliceClient(mLogin, mPassword);
+            myPoliceClient.getLostChildBids(0, 2).enqueue(bidsCallback);
+            return true;
+        }
 
-            try {
-                // Simulate network access.
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                return false;
-            }
-
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
+        Callback<List<BidFromServer>> bidsCallback = new Callback<List<BidFromServer>>() {
+            @Override
+            public void onResponse(Call<List<BidFromServer>> call, Response<List<BidFromServer>> response) {
+                Log.d(TAG, "onResponse()");
+                if (response.isSuccessful()) {
+                    List<BidFromServer> bids = response.body();
+                    Log.d(TAG, bids.get(0).getId() + "; " +
+                            bids.get(0).getName() + "; " +
+                            bids.get(0).getDateOfBirth());
+                } else {
+                    Log.d(TAG, "bidsCallback" +
+                            " Code: " + response.code() +
+                            " Message: " + response.message());
                 }
             }
 
-            // TODO: register the new account here.
-            return true;
-        }
+            @Override
+            public void onFailure(Call<List<BidFromServer>> call, Throwable t) {
+                t.printStackTrace();
+            }
+        };
 
         @Override
         protected void onPostExecute(final Boolean success) {

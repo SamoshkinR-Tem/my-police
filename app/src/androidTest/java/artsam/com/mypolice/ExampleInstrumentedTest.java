@@ -1,23 +1,21 @@
 package artsam.com.mypolice;
 
 import android.support.test.runner.AndroidJUnit4;
+import android.util.Log;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.sql.Timestamp;
 import java.util.List;
 
-import artsam.com.mypolice.models.LostChild;
-import okhttp3.Credentials;
+import artsam.com.mypolice.client.ClientsBuilder;
+import artsam.com.mypolice.client.MyPoliceClient;
+import artsam.com.mypolice.models.BidFromServer;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Instrumentation test, which will execute on an Android device.
@@ -27,46 +25,40 @@ import retrofit2.converter.gson.GsonConverterFactory;
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
 
-    MyPoliceClient myPoliceClient;
+    private static final String TAG = "ExampleInstrumentedTest";
+
+    private static MyPoliceClient myPoliceClient;
+
+    @BeforeClass
+    public static void createMyPoliceClient() {
+        myPoliceClient = ClientsBuilder.getMyPoliceClient("andrey", "and123and");
+    }
 
     @Test
     public void tryToGetLostChildrenBids() throws Exception {
-        createMyPoliceAPI();
-        String credentials = Credentials.basic("andrey", "and123and");
-        System.out.println(new Timestamp(System.currentTimeMillis()));
+        Log.d(TAG, new Timestamp(System.currentTimeMillis()).toString());
 
-        myPoliceClient.getLostChildBids(credentials, 0, 2).enqueue(bidsCallback);
+        myPoliceClient.getLostChildBids(0, 2).enqueue(bidsCallback);
     }
 
-    Callback<List<LostChild>> bidsCallback = new Callback<List<LostChild>>() {
+    Callback<List<BidFromServer>> bidsCallback = new Callback<List<BidFromServer>>() {
         @Override
-        public void onResponse(Call<List<LostChild>> call, Response<List<LostChild>> response) {
+        public void onResponse(Call<List<BidFromServer>> call, Response<List<BidFromServer>> response) {
             System.out.println("onResponse");
             if (response.isSuccessful()) {
-                List<LostChild> bids = response.body();
-                System.out.println(bids);
+                List<BidFromServer> bids = response.body();
+                Log.d(TAG, bids.get(0).getId() + "; " +
+                        bids.get(0).getName() + "; " +
+                        bids.get(0).getDateOfBirth());
             } else {
                 System.out.println("bidsCallback" + "Code: " + response.code() + " Message: " + response.message());
             }
         }
 
         @Override
-        public void onFailure(Call<List<LostChild>> call, Throwable t) {
+        public void onFailure(Call<List<BidFromServer>> call, Throwable t) {
             System.out.println("onFailure");
             t.printStackTrace();
         }
     };
-
-    private void createMyPoliceAPI() {
-        Gson gson = new GsonBuilder()
-                .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                .create();
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(MyPoliceClient.BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        myPoliceClient = retrofit.create(MyPoliceClient.class);
-    }
 }
