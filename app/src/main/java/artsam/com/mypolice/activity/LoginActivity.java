@@ -5,8 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.support.v7.app.AppCompatActivity;
 
-import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,10 +26,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-
-/**
- * A login screen that offers login via email/password.
- */
+//A login screen that offers login via login/password.
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
 
@@ -45,11 +40,6 @@ public class LoginActivity extends AppCompatActivity {
     EditText mPasswordView;
     @Bind(R.id.btnSignIn)
     Button mSignInBtn;
-
-    /**
-     * Keep track of the login task to ensure we can cancel it if requested.
-     */
-    private UserLoginTask mAuthTask = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,16 +63,15 @@ public class LoginActivity extends AppCompatActivity {
         String login = mLoginView.getText().toString();
         String password = mPasswordView.getText().toString();
 
-        if (mAuthTask == null && validate(login, password)) {
+        if (validate(login, password)) {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(login, password);
-            mAuthTask.execute((Void) null);
+            MyPoliceClient myPoliceClient = ClientsBuilder.getMyPoliceClient(login, password);
+            myPoliceClient.getLostChildBids(0, 1).enqueue(bidsCallback);
         } else {
             Toast.makeText(getBaseContext(), "Login failed", Toast.LENGTH_LONG).show();
         }
-
     }
 
     private boolean validate(String login, String password) {
@@ -97,17 +86,58 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         // Check for a valid password, if the user entered one.
-        if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
+        if (password.isEmpty()) {
+            mPasswordView.setError(getString(R.string.error_field_required));
+            mPasswordView.requestFocus();
+            return false;
+        } else if (password.length() < 4 || password.length() > 10) {
             mPasswordView.setError(getString(R.string.error_incorrect_password));
             mPasswordView.requestFocus();
             return false;
         }
+
         return true;
     }
 
-    /**
-     * Shows the progress UI and hides the login form.
-     */
+    Callback<List<BidFromServer>> bidsCallback = new Callback<List<BidFromServer>>() {
+        @Override
+        public void onResponse(Call<List<BidFromServer>> call, Response<List<BidFromServer>> response) {
+            Log.d(TAG, "onResponse() isSuccessful " + response.isSuccessful());
+            showProgress(false);
+            if (response.isSuccessful()) {
+                List<BidFromServer> bids = response.body();
+                Log.d(TAG, bids.get(0).getId() + "; " +
+                        bids.get(0).getName() + "; " +
+                        bids.get(0).getGender() + "; " +
+                        bids.get(0).getDateOfBirth() + "; " +
+                        bids.get(0).getRegion());
+                saveCredentials();
+                finish();
+            } else {
+                Log.d(TAG, "bidsCallback" +
+                        " Code: " + response.code() +
+                        " Message: " + response.message());
+                Toast.makeText(getBaseContext(),
+                        R.string.error_auth_invalid, Toast.LENGTH_LONG).show();
+                mLoginView.requestFocus();
+            }
+        }
+
+        @Override
+        public void onFailure(Call<List<BidFromServer>> call, Throwable t) {
+            Log.d(TAG, "onFailure()");
+            t.printStackTrace();
+            showProgress(false);
+            Toast.makeText(getBaseContext(),
+                    R.string.error_no_connection, Toast.LENGTH_LONG).show();
+        }
+    };
+
+    private void saveCredentials() {
+        //TODO: saving credentials
+    }
+
+    //Shows the progress UI and hides the login form.
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
     private void showProgress(final boolean show) {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
@@ -138,69 +168,6 @@ public class LoginActivity extends AppCompatActivity {
             // and hide the relevant UI components.
             mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
             mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-        }
-    }
-
-    /**
-     * Represents an asynchronous login/registration task used to authenticate
-     * the user.
-     */
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
-
-        private final String mLogin;
-        private final String mPassword;
-
-        UserLoginTask(String login, String password) {
-            mLogin = login;
-            mPassword = password;
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... params) {
-            MyPoliceClient myPoliceClient = ClientsBuilder.getMyPoliceClient(mLogin, mPassword);
-            myPoliceClient.getLostChildBids(0, 2).enqueue(bidsCallback);
-            return true;
-        }
-
-        Callback<List<BidFromServer>> bidsCallback = new Callback<List<BidFromServer>>() {
-            @Override
-            public void onResponse(Call<List<BidFromServer>> call, Response<List<BidFromServer>> response) {
-                Log.d(TAG, "onResponse()");
-                if (response.isSuccessful()) {
-                    List<BidFromServer> bids = response.body();
-                    Log.d(TAG, bids.get(0).getId() + "; " +
-                            bids.get(0).getName() + "; " +
-                            bids.get(0).getDateOfBirth());
-                } else {
-                    Log.d(TAG, "bidsCallback" +
-                            " Code: " + response.code() +
-                            " Message: " + response.message());
-                }
-            }
-
-            @Override
-            public void onFailure(Call<List<BidFromServer>> call, Throwable t) {
-                t.printStackTrace();
-            }
-        };
-
-        @Override
-        protected void onPostExecute(final Boolean success) {
-            mAuthTask = null;
-            showProgress(false);
-
-            if (success) {
-                finish();
-            } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            mAuthTask = null;
-            showProgress(false);
         }
     }
 }

@@ -6,6 +6,7 @@
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in</string>
     <string name="error_field_required">This field is required</string>
-    <string name="error_invalid_login">Sorry, there is no such account</string>
     <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_auth_invalid">Sorry, login or password is invalid</string>
+    <string name="error_no_connection">Check internet connection, please</string>
 </resources>

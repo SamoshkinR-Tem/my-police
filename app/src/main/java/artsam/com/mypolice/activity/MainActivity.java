@@ -11,12 +11,23 @@ import artsam.com.mypolice.R;
  */
 public class MainActivity extends Activity {
 
+    private static final int REQUEST_LOGIN_AND_GET_BIDS = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         Intent intent = new Intent(this, LoginActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent, REQUEST_LOGIN_AND_GET_BIDS);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == RESULT_OK) {
+            switch (requestCode) {
+                case REQUEST_LOGIN_AND_GET_BIDS:
+            }
+        }
     }
 }
