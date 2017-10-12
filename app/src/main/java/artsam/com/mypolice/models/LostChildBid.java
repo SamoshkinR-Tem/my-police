@@ -85,11 +85,11 @@ public class LostChildBid {
     }
 
 
-    private enum Gender {
+    public enum Gender {
         FEMALE, MALE
     }
 
-    private enum SearchStatus {
+    public enum SearchStatus {
         SEARCHING, FOUND, REJECTED
     }
 }

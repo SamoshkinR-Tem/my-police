@@ -3,6 +3,7 @@ package artsam.com.mypolice.activity;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 
 import android.os.Build;
@@ -22,6 +23,7 @@ import artsam.com.mypolice.client.MyPoliceClient;
 import artsam.com.mypolice.models.BidFromServer;
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import okhttp3.Credentials;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -29,6 +31,9 @@ import retrofit2.Response;
 //A login screen that offers login via login/password.
 public class LoginActivity extends AppCompatActivity {
     private static final String TAG = "LoginActivity";
+
+    private SharedPreferences sPref;
+    private String credentials;
 
     @Bind(R.id.login_form)
     View mLoginFormView;
@@ -46,14 +51,13 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         ButterKnife.bind(this);
-
         mSignInBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptLogin();
             }
         });
-
+        sPref = getSharedPreferences(MainActivity.MY_PREF, MODE_PRIVATE);
     }
 
     private void attemptLogin() {
@@ -67,7 +71,8 @@ public class LoginActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            MyPoliceClient myPoliceClient = ClientsBuilder.getMyPoliceClient(login, password);
+            MyPoliceClient myPoliceClient = ClientsBuilder
+                    .getMyPoliceClient(Credentials.basic(login, password));
             myPoliceClient.getLostChildBids(0, 1).enqueue(bidsCallback);
         } else {
             Toast.makeText(getBaseContext(), "Login failed", Toast.LENGTH_LONG).show();
@@ -105,13 +110,8 @@ public class LoginActivity extends AppCompatActivity {
             Log.d(TAG, "onResponse() isSuccessful " + response.isSuccessful());
             showProgress(false);
             if (response.isSuccessful()) {
-                List<BidFromServer> bids = response.body();
-                Log.d(TAG, bids.get(0).getId() + "; " +
-                        bids.get(0).getName() + "; " +
-                        bids.get(0).getGender() + "; " +
-                        bids.get(0).getDateOfBirth() + "; " +
-                        bids.get(0).getRegion());
                 saveCredentials();
+                setResult(RESULT_OK);
                 finish();
             } else {
                 Log.d(TAG, "bidsCallback" +
@@ -123,6 +123,14 @@ public class LoginActivity extends AppCompatActivity {
             }
         }
 
+        private void saveCredentials() {
+            String login = mLoginView.getText().toString();
+            String password = mPasswordView.getText().toString();
+            SharedPreferences.Editor ed = sPref.edit();
+            ed.putString(MainActivity.AUTHENTICATED_USER, Credentials.basic(login, password));
+            ed.apply();
+        }
+
         @Override
         public void onFailure(Call<List<BidFromServer>> call, Throwable t) {
             Log.d(TAG, "onFailure()");
@@ -132,10 +140,6 @@ public class LoginActivity extends AppCompatActivity {
                     R.string.error_no_connection, Toast.LENGTH_LONG).show();
         }
     };
-
-    private void saveCredentials() {
-        //TODO: saving credentials
-    }
 
     //Shows the progress UI and hides the login form.
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)

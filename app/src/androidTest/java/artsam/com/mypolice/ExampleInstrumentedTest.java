@@ -13,14 +13,13 @@ import java.util.List;
 import artsam.com.mypolice.client.ClientsBuilder;
 import artsam.com.mypolice.client.MyPoliceClient;
 import artsam.com.mypolice.models.BidFromServer;
+import okhttp3.Credentials;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
  * Instrumentation test, which will execute on an Android device.
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
  */
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
@@ -31,7 +30,7 @@ public class ExampleInstrumentedTest {
 
     @BeforeClass
     public static void createMyPoliceClient() {
-        myPoliceClient = ClientsBuilder.getMyPoliceClient("andrey", "and123and");
+        myPoliceClient = ClientsBuilder.getMyPoliceClient(Credentials.basic("andrey", "and123and"));
     }
 
     @Test

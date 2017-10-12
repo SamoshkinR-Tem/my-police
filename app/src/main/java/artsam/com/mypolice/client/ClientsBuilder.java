@@ -11,18 +11,14 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ClientsBuilder {
 
-    public static MyPoliceClient getMyPoliceClient(final String login, final String password) {
-//                Gson gson = new GsonBuilder()
-//                        .setDateFormat("yyyy-MM-dd")
-//                        .create();
-
+    public static MyPoliceClient getMyPoliceClient(final String credentials) {
         OkHttpClient okHttpClient = new OkHttpClient().newBuilder().addInterceptor(new Interceptor() {
             @Override
             public okhttp3.Response intercept(Chain chain) throws IOException {
                 Request originalRequest = chain.request();
 
-                Request.Builder builder = originalRequest.newBuilder().header("Authorization",
-                        Credentials.basic(login, password));
+                Request.Builder builder = originalRequest.newBuilder()
+                        .header("Authorization", credentials);
 
                 Request newRequest = builder.build();
                 return chain.proceed(newRequest);
